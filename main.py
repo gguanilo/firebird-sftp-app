@@ -5,40 +5,68 @@ from firebird.FirebirdHandler import FirebirdHandler
 from sftp.SFTPHandler import SFTPHandler
 from utils.Logger import Logger
 from utils.errors import FirebirdConnectionError, FirebirdQueryError
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from tkinter import ttk
 import re
 
-# Function to save and fetch scheduled tasks from the database
+Logger.setup_logging()
+# Load environment variables
+load_dotenv()
+
+# Firebird configuration
+firebird_config = {
+    "host": os.getenv("FIREBIRD_HOST"),
+    "port": int(os.getenv("FIREBIRD_PORT")),
+    "database": os.getenv("FIREBIRD_DATABASE"),
+    "user": os.getenv("FIREBIRD_USER"),
+    "password": os.getenv("FIREBIRD_PASSWORD")
+}
+
+# Initialize scheduler
+scheduler = BackgroundScheduler()
+
 def save_task_to_db(task_details):
-    # Logic to save task details to the database
-    pass
+    try:
+        db_handler = FirebirdHandler(**firebird_config)
+        db_handler.connect()
+        db_handler.insert_task(
+            task_name=task_details["name"],
+            query=task_details["query"],
+            output_file=task_details["output_file"],
+            remote_path=task_details["remote_path"],
+            sftp_host=task_details["sftp_host"],
+            sftp_user=task_details["sftp_user"],
+            cron_expression=task_details["cron_expression"]
+        )
+        db_handler.close()
+    except Exception as e:
+        logging.error(f"Error saving task to database: {e}")
+        raise
 
 def fetch_tasks_from_db():
-    # Logic to fetch scheduled tasks from the database
-    return [
-        {"id": 1, "name": "Task 1", "status": "Completed"},
-        {"id": 2, "name": "Task 2", "status": "Pending"},
-    ]
+    try:
+        db_handler = FirebirdHandler(**firebird_config)
+        db_handler.connect()
+        tasks = db_handler.get_tasks()
+        db_handler.close()
+        return tasks
+    except Exception as e:
+        logging.error(f"Error fetching tasks from database: {e}")
+        return []
 
 def job(task_name, query, output_file, remote_path, sftp_host, sftp_user, sftp_pass):
     """
     Job to run the process of fetching data, saving to a file, and uploading it.
     """
-    firebird_config = {
-        "host": os.getenv("FIREBIRD_HOST"),
-        "port": int(os.getenv("FIREBIRD_PORT")),
-        "database": os.getenv("FIREBIRD_DATABASE"),
-        "user": os.getenv("FIREBIRD_USER"),
-        "password": os.getenv("FIREBIRD_PASSWORD")
-    }
     sftp_config = {
         "host": sftp_host,
         "username": sftp_user,
         "password": sftp_pass,
-        "port": int(os.getenv("SFTP_PORT", 22))
+        "port": int(os.getenv("SFTP_PORT", 2222))
     }
 
     db_handler = FirebirdHandler(**firebird_config)
@@ -49,9 +77,66 @@ def job(task_name, query, output_file, remote_path, sftp_host, sftp_user, sftp_p
         db_handler.execute_query_to_csv(query, output_file)
         sftp_handler.connect()
         sftp_handler.upload_file(output_file, remote_path)
+        logging.info(f"Task {task_name} executed successfully.")
+    except Exception as e:
+        logging.error(f"Error executing task {task_name}: {e}")
     finally:
         db_handler.close()
         sftp_handler.close_connection()
+
+def schedule_task(task):
+    """
+    Schedule a task based on its cron expression.
+    """
+    logging.info(f"Attempting to schedule task: {task}")
+    cron_expression = task.get("CRON_EXPRESSION")
+    if cron_expression:
+        try:
+            logging.info(f"Parsing cron expression: {cron_expression}")
+            cron_parts = cron_expression.split()
+            logging.info(f"Cron parts: {cron_parts}")
+
+            scheduler.add_job(
+                job,
+                trigger=CronTrigger(
+                    minute=cron_parts[0],
+                    hour=cron_parts[1],
+                    day=cron_parts[2],
+                    month=cron_parts[3],
+                    day_of_week=cron_parts[4]
+                ),
+                args=[
+                    task["TASK_NAME"],
+                    task["QUERY"],
+                    task["OUTPUT_FILE"],
+                    task["REMOTE_PATH"],
+                    task["SFTP_HOST"],
+                    task["SFTP_USER"],
+                    "password"  # Replace with actual password management
+                ],
+                id=str(task["ID"]),
+                name=task["TASK_NAME"],
+                replace_existing=True
+            )
+            logging.info(f"Task {task['TASK_NAME']} scheduled successfully.")
+        except Exception as e:
+            logging.error(f"Error scheduling task {task['TASK_NAME']}: {e}")
+    else:
+        logging.info("No cron expression provided; skipping task scheduling.")
+
+
+def load_and_schedule_tasks():
+    """
+    Load tasks from the database and schedule them.
+    """
+    logging.info("Fetching tasks from the database to schedule them.")
+    tasks = fetch_tasks_from_db()
+    logging.info(f"Fetched {len(tasks)} tasks from the database.")
+    for task in tasks:
+        logging.info(f"Scheduling task: {task['TASK_NAME']} (ID: {task['ID']})")
+        schedule_task(task)
+    logging.info("All tasks have been scheduled.")
+
 
 def open_gui():
     def validate_inputs():
@@ -114,7 +199,7 @@ def open_gui():
         for row in task_list.get_children():
             task_list.delete(row)
         for task in tasks:
-            task_list.insert("", "end", values=(task["id"], task["name"], task["status"]))
+            task_list.insert("", "end", values=(task.get("ID"), task.get("TASK_NAME"), task.get("STATUS")))
 
     root = tk.Tk()
     root.title("Scheduled Tasks Manager")
@@ -175,6 +260,7 @@ def open_gui():
     root.mainloop()
 
 if __name__ == "__main__":
-    load_dotenv()
     Logger.setup_logging()
+    load_and_schedule_tasks()
+    scheduler.start()
     open_gui()

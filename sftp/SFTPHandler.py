@@ -1,3 +1,5 @@
+import traceback
+
 import paramiko
 import logging
 
@@ -39,14 +41,26 @@ class SFTPHandler:
         :param local_path: Path to the local file
         :param remote_path: Path on the SFTP server where the file will be uploaded
         """
+        logging.info(f"Attempting to upload file. Variables: local_path={local_path}, remote_path={remote_path}")
         try:
             if not self.sftp:
                 raise ConnectionError("SFTP connection is not established.")
 
+            logging.info(f"SFTP connection established. Uploading file from {local_path} to {remote_path}.")
             self.sftp.put(local_path, remote_path)
             logging.info(f"File '{local_path}' uploaded successfully to '{remote_path}'.")
+        except FileNotFoundError as fnf_error:
+            logging.error(f"Local file not found: {fnf_error}")
+            logging.debug(f"Stack trace: {traceback.format_exc()}")
+            raise
+        except PermissionError as perm_error:
+            logging.error(f"Permission denied: {perm_error}")
+            logging.debug(f"Stack trace: {traceback.format_exc()}")
+            raise
         except Exception as e:
             logging.error(f"Failed to upload file: {e}")
+            logging.debug(
+                f"Error details: {e}, Variables: local_path={local_path}, remote_path={remote_path}, Stack trace: {traceback.format_exc()}")
             raise
 
     def close_connection(self):

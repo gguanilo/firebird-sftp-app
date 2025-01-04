@@ -130,7 +130,7 @@ class FirebirdHandler:
                 raise FirebirdConnectionError("No connection established with the database.")
 
             cursor = self.connection.cursor()
-            query = "SELECT id, task_name, query, output_file, remote_path, sftp_host, sftp_user, cron_expression, created_at FROM scheduled_tasks"
+            query = "SELECT id, task_name, query, output_file, remote_path, sftp_host, sftp_user, cron_expression, created_at, status FROM scheduled_tasks"
             cursor.execute(query)
 
             rows = cursor.fetchall()
