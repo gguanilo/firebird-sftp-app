@@ -5,3 +5,11 @@ class FirebirdConnectionError(Exception):
 class FirebirdQueryError(Exception):
     """Excepción personalizada para errores al ejecutar consultas en Firebird."""
     pass
+
+
+class SQLiteConnectionError:
+    pass
+
+
+class SQLiteQueryError:
+    pass
