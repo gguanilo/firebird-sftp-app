@@ -25,7 +25,8 @@ class SQLiteHandler:
             logging.error(f"Error connecting to the database: {e}")
             raise SQLiteConnectionError(f"Error connecting to the database: {e}")
 
-    def insert_task(self, task_name, query, output_file, remote_path, sftp_host, sftp_user, cron_expression):
+    def insert_task(self, task_name, query, output_file, remote_path, sftp_host, sftp_user, sftp_password,
+                    cron_expression):
         """
         Inserts a scheduled task into the database.
 
@@ -43,12 +44,13 @@ class SQLiteHandler:
 
             cursor = self.connection.cursor()
             insert_query = (
-                "INSERT INTO scheduled_tasks (task_name, query, output_file, remote_path, sftp_host, sftp_user, cron_expression) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?)"
+                "INSERT INTO scheduled_tasks (task_name, query, output_file, remote_path, sftp_host, sftp_user,sftp_password,cron_expression) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
             )
 
             cursor.execute(insert_query,
-                           (task_name, query, output_file, remote_path, sftp_host, sftp_user, cron_expression))
+                           (task_name, query, output_file, remote_path, sftp_host, sftp_user, sftp_password,
+                            cron_expression))
             self.connection.commit()
             logging.info(f"Task '{task_name}' inserted successfully.")
 
@@ -74,7 +76,7 @@ class SQLiteHandler:
                 raise SQLiteConnectionError("No connection established with the database.")
 
             cursor = self.connection.cursor()
-            query = "SELECT id, task_name, query, output_file, remote_path, sftp_host, sftp_user, cron_expression, created_at, status FROM scheduled_tasks"
+            query = "SELECT id, task_name, query, output_file, remote_path, sftp_host, sftp_user,sftp_password, cron_expression, created_at, status FROM scheduled_tasks"
             cursor.execute(query)
 
             rows = cursor.fetchall()

@@ -1,20 +1,18 @@
 import logging
 import os
+import re
+import tkinter as tk
+from tkinter import messagebox
+from tkinter import ttk
+
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 from dotenv import load_dotenv
+
+from db.SQLiteHandler import SQLiteHandler
 from firebird.FirebirdHandler import FirebirdHandler
 from sftp.SFTPHandler import SFTPHandler
 from utils.Logger import Logger
-from utils.errors import FirebirdConnectionError, FirebirdQueryError
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.cron import CronTrigger
-from utils.Logger import Logger
-from utils.errors import SQLiteConnectionError, SQLiteQueryError
-from db.SQLiteHandler import SQLiteHandler
-
-import tkinter as tk
-from tkinter import filedialog, messagebox
-from tkinter import ttk
-import re
 
 Logger.setup_logging()
 # Load environment variables
@@ -44,6 +42,7 @@ def save_task_to_db(task_details):
             remote_path=task_details["remote_path"],
             sftp_host=task_details["sftp_host"],
             sftp_user=task_details["sftp_user"],
+            sftp_password=task_details["sftp_password"],
             cron_expression=task_details["cron_expression"]
         )
         db_handler.close()
@@ -116,7 +115,7 @@ def schedule_task(task):
                     task["remote_path"],
                     task["sftp_host"],
                     task["sftp_user"],
-                    "password"  # Replace with actual password management
+                    task["sftp_password"]
                 ],
                 id=str(task["id"]),
                 name=task["task_name"],
@@ -187,6 +186,7 @@ def open_gui():
                 "remote_path": remote_path,
                 "sftp_host": sftp_host,
                 "sftp_user": sftp_user,
+                "sftp_password": sftp_pass,
                 "cron_expression": cron_expression,
                 "status": "Scheduled"
             }
