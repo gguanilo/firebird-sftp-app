@@ -43,18 +43,16 @@ class SQLiteHandler:
                 raise SQLiteConnectionError("No connection established with the database.")
 
             cursor = self.connection.cursor()
-            insert_query = (
-                "INSERT INTO scheduled_tasks (task_name, query, output_file, remote_path, sftp_host, sftp_user,sftp_password,cron_expression) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            cursor.execute(
+                """
+                INSERT INTO scheduled_tasks (task_name, query, output_file, remote_path, sftp_host, sftp_user, sftp_password, cron_expression, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+                """,
+                (task_name, query, output_file, remote_path, sftp_host, sftp_user, sftp_password, cron_expression)
             )
-
-            cursor.execute(insert_query,
-                           (task_name, query, output_file, remote_path, sftp_host, sftp_user, sftp_password,
-                            cron_expression))
             self.connection.commit()
-            logging.info(f"Task '{task_name}' inserted successfully.")
-
             cursor.close()
+            return cursor.lastrowid
         except SQLiteConnectionError as e:
             logging.error(f"Error Connection: {e}")
             raise

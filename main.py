@@ -35,7 +35,7 @@ def save_task_to_db(task_details):
     try:
         db_handler = SQLiteHandler(database_path)
         db_handler.connect()
-        db_handler.insert_task(
+        task_id = db_handler.insert_task(
             task_name=task_details["name"],
             query=task_details["query"],
             output_file=task_details["output_file"],
@@ -46,6 +46,10 @@ def save_task_to_db(task_details):
             cron_expression=task_details["cron_expression"]
         )
         db_handler.close()
+
+        logging.info(f"Task '{task_details['name']}' inserted into database. Scheduling it now.")
+        task_details["id"] = task_id  # Asignar el ID generado por la base de datos
+        schedule_task(task_details)
     except Exception as e:
         logging.error(f"Error saving task to database: {e}")
         raise
@@ -99,11 +103,15 @@ def job(task_id, task_name, query, output_file, remote_path, sftp_host, sftp_use
 
 def schedule_task(task):
     """
-    Schedule a task based on its cron expression.
+    Schedule a task based on its cron expression, if not already scheduled.
     """
     logging.info(f"Attempting to schedule task: {task}")
     cron_expression = task.get("cron_expression")
     if cron_expression:
+        if scheduler.get_job(str(task["id"])):
+            logging.info(f"Task {task['task_name']} (ID: {task['id']}) is already scheduled. Skipping.")
+            return
+
         try:
             logging.info(f"Parsing cron expression: {cron_expression}")
             cron_parts = cron_expression.split()
@@ -141,15 +149,19 @@ def schedule_task(task):
 
 def load_and_schedule_tasks():
     """
-    Load tasks from the database and schedule them.
+    Load tasks from the database and schedule only those that are not completed.
     """
     logging.info("Fetching tasks from the database to schedule them.")
     tasks = fetch_tasks_from_db()
     logging.info(f"Fetched {len(tasks)} tasks from the database.")
-    for task in tasks:
+
+    pending_tasks = [task for task in tasks if task.get("status") != "completed"]
+
+    logging.info(f"Scheduling {len(pending_tasks)} pending tasks.")
+    for task in pending_tasks:
         logging.info(f"Scheduling task: {task['task_name']} (ID: {task['id']})")
         schedule_task(task)
-    logging.info("All tasks have been scheduled.")
+    logging.info("All pending tasks have been scheduled.")
 
 
 def open_gui():
