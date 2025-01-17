@@ -98,6 +98,19 @@ class SQLiteHandler:
             logging.error(f"General error fetching tasks: {ex}")
             raise Exception(f"General error fetching tasks: {ex}")
 
+    def update_task_status(self, task_id, status):
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute(
+                "UPDATE scheduled_tasks SET status = ?, last_execution = CURRENT_TIMESTAMP WHERE id = ?",
+                (status, task_id)
+            )
+            self.connection.commit()
+            cursor.close()
+        except Exception as e:
+            logging.error(f"Error updating task status: {e}")
+            raise
+
     def close(self):
         """
         Closes the connection to the SQLite database.

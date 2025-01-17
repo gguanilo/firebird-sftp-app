@@ -61,7 +61,7 @@ def fetch_tasks_from_db():
         logging.error(f"Error fetching tasks from database: {e}")
         return []
 
-def job(task_name, query, output_file, remote_path, sftp_host, sftp_user, sftp_pass):
+def job(task_id, task_name, query, output_file, remote_path, sftp_host, sftp_user, sftp_pass):
     """
     Job to run the process of fetching data, saving to a file, and uploading it.
     """
@@ -74,18 +74,28 @@ def job(task_name, query, output_file, remote_path, sftp_host, sftp_user, sftp_p
 
     db_handler = FirebirdHandler(**firebird_config)
     sftp_handler = SFTPHandler(**sftp_config)
+    sqlite_handler = SQLiteHandler(database_path)
 
     try:
+        logging.info(f"Starting task {task_name} (ID: {task_id})")
         db_handler.connect()
         db_handler.execute_query_to_csv(query, output_file)
         sftp_handler.connect()
         sftp_handler.upload_file(output_file, remote_path)
+
+        # Update task status to "completed" on success
+        sqlite_handler.connect()
+        sqlite_handler.update_task_status(task_id, "completed")
         logging.info(f"Task {task_name} executed successfully.")
     except Exception as e:
+        # Update task status to "error" on failure
+        sqlite_handler.connect()
+        sqlite_handler.update_task_status(task_id, "error")
         logging.error(f"Error executing task {task_name}: {e}")
     finally:
         db_handler.close()
         sftp_handler.close_connection()
+        sqlite_handler.close()
 
 def schedule_task(task):
     """
@@ -109,6 +119,7 @@ def schedule_task(task):
                     day_of_week=cron_parts[4]
                 ),
                 args=[
+                    task["id"],
                     task["task_name"],
                     task["query"],
                     task["output_file"],
@@ -258,6 +269,9 @@ def open_gui():
     task_list.heading("name", text="Task Name")
     task_list.heading("status", text="Status")
     task_list.pack(fill=tk.BOTH, expand=True)
+
+    refresh_button = tk.Button(root, text="Refresh", command=update_task_list)
+    refresh_button.pack(pady=10)
 
     update_task_list()
 
