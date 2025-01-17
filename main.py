@@ -69,7 +69,7 @@ def job(task_name, query, output_file, remote_path, sftp_host, sftp_user, sftp_p
         "host": sftp_host,
         "username": sftp_user,
         "password": sftp_pass,
-        "port": int(os.getenv("SFTP_PORT", 2222))
+        "port": int(os.getenv("SFTP_PORT", 22))
     }
 
     db_handler = FirebirdHandler(**firebird_config)
