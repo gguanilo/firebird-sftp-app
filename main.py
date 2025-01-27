@@ -2,6 +2,7 @@ import logging
 import os
 import re
 import tkinter as tk
+import traceback
 from tkinter import messagebox
 from tkinter import ttk
 
@@ -51,6 +52,7 @@ def save_task_to_db(task_details):
         task_details["id"] = task_id  # Asignar el ID generado por la base de datos
         schedule_task(task_details)
     except Exception as e:
+        traceback.print_exc()
         logging.error(f"Error saving task to database: {e}")
         raise
 
