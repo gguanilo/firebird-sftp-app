@@ -22,6 +22,7 @@ def create_database(database_path):
             remote_path TEXT,
             sftp_host TEXT,
             sftp_user TEXT,
+            sftp_password TEXT,
             cron_expression TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             status TEXT DEFAULT 'pending',

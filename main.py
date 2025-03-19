@@ -48,7 +48,7 @@ def save_task_to_db(task_details):
         )
         db_handler.close()
 
-        logging.info(f"Task '{task_details['name']}' inserted into database. Scheduling it now.")
+        logging.info(f"Task '{task_details.get('task_name')}' inserted into database. Scheduling it now.")
         task_details["id"] = task_id  # Asignar el ID generado por la base de datos
         schedule_task(task_details)
     except Exception as e:
@@ -129,22 +129,23 @@ def schedule_task(task):
                     day_of_week=cron_parts[4]
                 ),
                 args=[
-                    task["id"],
-                    task["task_name"],
-                    task["query"],
-                    task["output_file"],
-                    task["remote_path"],
-                    task["sftp_host"],
-                    task["sftp_user"],
-                    task["sftp_password"]
+                    task.get("id"),
+                    task.get("task_name"),
+                    task.get("query"),
+                    task.get("output_file"),
+                    task.get("remote_path"),
+                    task.get("sftp_host"),
+                    task.get("sftp_user"),
+                    task.get("sftp_password")
                 ],
                 id=str(task["id"]),
-                name=task["task_name"],
+                name=task.get("task_name"),
                 replace_existing=True
             )
-            logging.info(f"Task {task['task_name']} scheduled successfully.")
+            logging.info(f"Task {task.get('task_name')} scheduled successfully.")
         except Exception as e:
-            logging.error(f"Error scheduling task {task['task_name']}: {e}")
+            traceback.print_exc()
+            logging.error(f"Error scheduling task {task.get('task_name')}: {e}")
     else:
         logging.info("No cron expression provided; skipping task scheduling.")
 

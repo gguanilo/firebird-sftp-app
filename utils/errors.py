@@ -7,9 +7,10 @@ class FirebirdQueryError(Exception):
     pass
 
 
-class SQLiteConnectionError:
+class SQLiteConnectionError(Exception):
+    """Excepción personalizada para errores de conexión a SQLite."""
     pass
 
-
-class SQLiteQueryError:
+class SQLiteQueryError(Exception):
+    """Excepción personalizada para errores al ejecutar consultas en SQLite."""
     pass
