@@ -1,4 +1,5 @@
 import logging
+import traceback
 
 import fdb
 import pandas as pd
@@ -73,12 +74,15 @@ class FirebirdHandler:
             # Close the cursor
             cursor.close()
         except FirebirdConnectionError as e:
+            traceback.print_exc()
             logging.error(f"Error Connection: {e}")
             raise
         except fdb.DatabaseError as e:
+            traceback.print_exc()
             logging.error(f"Error executing query: {e}")
             raise FirebirdQueryError(f"Error executing query: {e}")
         except Exception as ex:
+            traceback.print_exc()
             logging.error(f"General error processing the query: {ex}")
             raise Exception(f"General error processing the query: {ex}")
 
@@ -143,12 +147,15 @@ class FirebirdHandler:
             cursor.close()
             return tasks
         except FirebirdConnectionError as e:
+            traceback.print_exc()
             logging.error(f"Error Connection: {e}")
             raise
         except fdb.DatabaseError as e:
+            traceback.print_exc()
             logging.error(f"Error fetching tasks: {e}")
             raise FirebirdQueryError(f"Error fetching tasks: {e}")
         except Exception as ex:
+            traceback.print_exc()
             logging.error(f"General error fetching tasks: {ex}")
             raise Exception(f"General error fetching tasks: {ex}")
 
