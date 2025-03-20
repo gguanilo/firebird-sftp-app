@@ -45,46 +45,53 @@ class FirebirdHandler:
     def execute_query_to_csv(self, query, output_file):
         """
         Executes a query on the Firebird database and saves the results to a CSV file.
+        Instrumentado para medir el tiempo de ejecución y registrar información relevante.
 
         :param query: SQL query to execute
         :param output_file: Name of the CSV file to save the results
         """
+        import time
         try:
+            start_time = time.time()
             if not self.connection:
                 raise FirebirdConnectionError("No connection established with the database.")
 
-            # Create a cursor to execute queries
+            # Crear un cursor para ejecutar la consulta
             cursor = self.connection.cursor()
 
-            # Execute the query
+            logging.info(f"Ejecutando consulta: {query}")
+            # Ejecutar la consulta
             cursor.execute(query)
 
-            # Fetch results and column names
+            # Obtener resultados y nombres de columnas
             rows = cursor.fetchall()
+            num_rows = len(rows)
             columns = [desc[0] for desc in cursor.description]
 
-            # Create a DataFrame with the results
+            # Crear un DataFrame con los resultados
             df = pd.DataFrame(rows, columns=columns)
 
-            # Save the DataFrame to a CSV file
+            # Guardar el DataFrame en un archivo CSV
             df.to_csv(output_file, index=False, encoding='utf-8')
 
-            logging.info(f"Results saved to {output_file}.")
+            elapsed_time = time.time() - start_time
+            logging.info(
+                f"Consulta ejecutada y resultados guardados en {output_file} en {elapsed_time:.2f} segundos. Filas obtenidas: {num_rows}")
 
-            # Close the cursor
+            # Cerrar el cursor
             cursor.close()
         except FirebirdConnectionError as e:
             traceback.print_exc()
-            logging.error(f"Error Connection: {e}")
+            logging.error(f"Error de conexión: {e}")
             raise
         except fdb.DatabaseError as e:
             traceback.print_exc()
-            logging.error(f"Error executing query: {e}")
-            raise FirebirdQueryError(f"Error executing query: {e}")
+            logging.error(f"Error al ejecutar la consulta: {e}")
+            raise FirebirdQueryError(f"Error al ejecutar la consulta: {e}")
         except Exception as ex:
             traceback.print_exc()
-            logging.error(f"General error processing the query: {ex}")
-            raise Exception(f"General error processing the query: {ex}")
+            logging.error(f"Error general al procesar la consulta: {ex}")
+            raise Exception(f"Error general al procesar la consulta: {ex}")
 
     def insert_task(self, task_name, query, output_file, remote_path, sftp_host, sftp_user, cron_expression):
         """
